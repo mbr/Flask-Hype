@@ -90,21 +90,20 @@ class FlaskNamespace(Namespace):
 
 
     def _format_target(self, path):
-        # unclear if this function is necessary
+        # unclear if this function is necessary at all
         return path
 
     def connect(self, app_or_bp):
-        """Connects a namespace onto a Flask application or blueprint,
-        setting up routes.
+        """Connects a namespace onto a Flask application or blueprint. This
+        will register the necessary URL converters onto the app, as well as
+        setting up routes to the resources.
+
+        If a blueprint is passed, all actions that cannot be performed on
+        the blueprint will be recorded to be applied to the application upon
+        Blueprint registration.
+
         :param app_or_bp: The app or blueprint to connect the namespace to.
         """
-
-        # converters
-        # for resource in self.resources():
-        #     converter_cls = resource.converter_cls
-        #     if not converter_cls:
-        #         continue
-        #     app_or_bp.url_map.converters[converter_cls.name] = converter_cls
 
         @recordable()
         def add_resource_converter(app, resource):
@@ -119,12 +118,6 @@ class FlaskNamespace(Namespace):
         for name, submounts, path, methods, targets in self.routes():
             # there used to be a sanity check for duplicate views here,
             # however that does not work with blueprints
-
-            # functools.partial(
-            #     handler_cls.dispatch,
-            #     context_cls,
-            #     targets=targets,
-            #     )
 
             view_func = resource_view(targets).as_view(name)
             app_or_bp.view_functions[name] = view_func
@@ -142,8 +135,15 @@ class FlaskNamespace(Namespace):
                  url_rules.append(werkzeug.routing.Submount(submount, rules))
 
         def add_rules_to_blueprint(bp, rules):
-            # do *not* confuse this or any of the stuff below with
-            # add_url_rule - it's a completely different function!
+            """Helper function for adding rules to a blueprint,
+            honoring the url_prefix.
+
+            :param bp: Blueprint to add rules to.
+            :param rules: A sequence of werkzeug.routing.Rule instances or
+                          similar."""
+
+            # note: do *not* confuse this or any of the stuff below with
+            #       add_url_rule - it's a completely different function!
             def add_rules(state):
                 _rules = rules
 
@@ -158,6 +158,7 @@ class FlaskNamespace(Namespace):
 
             bp.record(add_rules)
 
+        # add all the generated rules to the url map
         url_map = getattr(app_or_bp, 'url_map', None)
         if url_map:
             # regular app, just slap the the rules onto the url map
