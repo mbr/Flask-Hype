@@ -3,10 +3,11 @@ from flask.views import View
 import inflection
 import werkzeug
 from werkzeug.routing import BaseConverter
-
 from hype import Registry, Handler, Context, Resource
 from hype.registry import Namespace
 from hype.resource import ResourceMeta
+
+from flask.ext.hype.util import recordable
 
 
 def resource_view(targets):
