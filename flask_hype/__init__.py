@@ -1,10 +1,12 @@
 from flask import request
 from flask.views import View
+import inflection
 import werkzeug
 from werkzeug.routing import BaseConverter
 
-from hype import Registry, Handler, Context
+from hype import Registry, Handler, Context, Resource
 from hype.registry import Namespace
+from hype.resource import ResourceMeta
 
 
 def resource_view(targets):
@@ -147,3 +149,44 @@ class FlaskRegistry(Registry):
         return self.root.connect(*args, **kwargs)
 
     namespace_cls = FlaskNamespace
+
+
+class FlaskHypeResourceMeta(ResourceMeta):
+    def __new__(mcs, name, bases, dikt):
+
+        # we need to skip FlaskHypeResource, otherwise all resources
+        # will get a default _type_ and _collection_ named 'FlaskHypeResource'
+        # FIXME: alter hype to make this not depend on hacks like the one
+        #         below
+        if name != 'FlaskHypeResource':
+            # auto-generate singular and plural forms
+            if '_type_' not in dikt:
+                dikt['_type_'] = inflection.underscore(name)
+
+            if '_collection_' not in dikt:
+                dikt['_collection_'] = inflection.pluralize(dikt['_type_'])
+
+        return super(FlaskHypeResourceMeta, mcs).__new__(
+            mcs, name, bases, dikt
+        )
+
+
+
+class FlaskHype(object):
+    def __init__(self, app=None):
+        if app:
+            self.init_app(app)
+        self.registry = FlaskRegistry()
+        self.Resource = self.make_resource_base(self.registry)
+
+    def make_resource_base(self, hype_registry):
+
+        class FlaskHypeResource(Resource):
+            __metaclass__ = FlaskHypeResourceMeta
+
+            registry = hype_registry
+
+        return FlaskHypeResource
+
+    def init_app(self, app):
+        self.registry.connect(app)
