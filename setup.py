@@ -20,5 +20,5 @@ setup(
     url='http://github.com/mbr/flask-hype',
     license='MIT',
     packages=find_packages(exclude=['tests']),
-    install_requires=[],
+    install_requires=['flask', 'hype', 'inflection'],
 )
