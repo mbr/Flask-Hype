@@ -1,15 +1,10 @@
 from flask import request
-
 from flask.views import View
 import werkzeug
-from werkzeug.routing import RuleFactory, BaseConverter
+from werkzeug.routing import BaseConverter
 
 from hype import Registry, Handler, Context
-
-from hype.resource import Resource
 from hype.registry import Namespace
-import model
-from hype.fields import Integer, String
 
 
 def resource_view(targets):
@@ -56,7 +51,7 @@ def converter(obj_type):
 
     return ResourceConverter
 
-# THIS IS REQUIRED IN FLASK-HYPE
+
 class FlaskNamespace(Namespace):
     def _format_path(self, path):
         # given a list of path components, formats those into a
@@ -152,4 +147,3 @@ class FlaskRegistry(Registry):
         return self.root.connect(*args, **kwargs)
 
     namespace_cls = FlaskNamespace
-# END OF
