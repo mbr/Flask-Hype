@@ -115,12 +115,16 @@ class FlaskNamespace(Namespace):
         # register views
         submount_rules = {}
 
+        @recordable()
+        def add_view_function(app, name, view_func):
+            app.view_functions[name] = view_func
+
         for name, submounts, path, methods, targets in self.routes():
             # there used to be a sanity check for duplicate views here,
             # however that does not work with blueprints
 
             view_func = resource_view(targets).as_view(name)
-            app_or_bp.view_functions[name] = view_func
+            add_view_function(app_or_bp, name, view_func)
             rule = werkzeug.routing.Rule(path, endpoint=name, methods=methods)
 
             for submount in submounts:
