@@ -1,4 +1,5 @@
 from flask import request
+from flask import request, Blueprint
 from flask.views import View
 import inflection
 import werkzeug
@@ -56,6 +57,29 @@ def converter(obj_type):
 
 
 class FlaskNamespace(Namespace):
+    def get_endpoint_name(self, app_or_bp, name):
+        """Translate an endpoint name from hype to Flask-Hype.
+
+        Endpoint in hype usually use a dot (.) as separators, which is very
+        problematic in a Flask context, as dots are reserved to indicate
+        blueprints in view function names.
+
+        Namespaces endpoints therefore are renamed using this function; any
+        dot introduced on behalf of hype is replaced with a colon. If the
+        endpoint is to be registered on a :class:`~flask.Blueprint`,
+        the blueprint's name is prefixed with a dot as well.
+
+        :param app_or_bp: A :class:`~flask.Flask` or
+                          :class:`~flask.Blueprint` object.
+        :param name: The name to translate.
+        :return: The new name.
+        """
+
+        name = name.replace('.', ':')
+        if isinstance(app_or_bp, Blueprint):
+            name = '{}.{}'.format(app_or_bp.name, name)
+        return name
+
     def _format_path(self, path):
         # given a list of path components, formats those into a
         # an actual path
@@ -118,6 +142,7 @@ class FlaskNamespace(Namespace):
         for name, submounts, path, methods, targets in self.routes():
             # there used to be a sanity check for duplicate views here,
             # however that does not work with blueprints
+            name = self.get_endpoint_name(app_or_bp, name)
 
             view_func = resource_view(targets).as_view(name)
             app_or_bp.endpoint(name)(view_func)
