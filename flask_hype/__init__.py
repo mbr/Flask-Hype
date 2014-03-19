@@ -1,5 +1,5 @@
-from flask import request
 from flask import request, Blueprint
+from flask_arrest.helpers import serialize_response
 from flask.views import View
 import inflection
 import werkzeug
@@ -20,14 +20,16 @@ def resource_view(targets):
         def dispatch_request(self, **kwargs):
             # kwargs are the parameters extracted from the URL
 
-            # create a context
-            print 'DISPATCHING REQUEST TO', targets
-            return Handler.dispatch(
+            # call the handler and save the return value
+            result = Handler.dispatch(
                 Context, targets,
                 request=request,
                 uri=request.path,
                 method=request.method,
-                params=kwargs)
+                **kwargs)
+
+            # serialize the response using flask-arrest
+            return serialize_response(result)
 
     return ResourceView
 
