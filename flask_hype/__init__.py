@@ -106,9 +106,12 @@ class FlaskNamespace(Namespace):
         #         continue
         #     app_or_bp.url_map.converters[converter_cls.name] = converter_cls
 
-        converters = app_or_bp.url_map.converters
+        @recordable()
+        def add_resource_converter(app, resource):
+            app.url_map.converters[resource._type_] = converter(resource)
+
         for resource in self.resources():
-            converters[resource._type_] = (converter(resource))
+            add_resource_converter(app_or_bp, resource)
 
         # register views
         submount_rules = {}
@@ -130,15 +133,38 @@ class FlaskNamespace(Namespace):
             for submount in submounts:
                 submount_rules.setdefault(submount, []).append(rule)
 
-        # map view rules
-        submounts = []
-        for submount, rules in submount_rules.items():
+        # compile a list of url_rules that need to be added to the url map
+        url_rules = []
+        for prefix, rules in submount_rules.items():
             if submount is None:
-                submounts.append(werkzeug.routing.Submount('', rules))
+                 url_rules.extend(rules)
             else:
-                submounts.append(werkzeug.routing.Submount(submount, rules))
-        for submount in submounts:
-            app_or_bp.url_map.add(submount)
+                 url_rules.append(werkzeug.routing.Submount(submount, rules))
+
+        def add_rules_to_blueprint(bp, rules):
+            # do *not* confuse this or any of the stuff below with
+            # add_url_rule - it's a completely different function!
+            def add_rules(state):
+                _rules = rules
+
+                # if the blueprint has been mounted with a prefix, we need
+                # to honor this prefix on our submount
+                if state.url_prefix:
+                    _rules = werkzeug.routing.Submount(
+                        state.url_prefix, rules).get_rules(state.app.url_map)
+
+                for rule in _rules:
+                    state.app.url_map.add(rule)
+
+            bp.record(add_rules)
+
+        url_map = getattr(app_or_bp, 'url_map', None)
+        if url_map:
+            # regular app, just slap the the rules onto the url map
+            map(url_map.add, url_rules)
+        else:
+            # it's a blueprint, we can only record the addition of the rules
+            add_rules_to_blueprint(app_or_bp, url_rules)
 
 
 class FlaskRegistry(Registry):
@@ -157,8 +183,7 @@ class FlaskHypeResourceMeta(ResourceMeta):
 
         # we need to skip FlaskHypeResource, otherwise all resources
         # will get a default _type_ and _collection_ named 'FlaskHypeResource'
-        # FIXME: alter hype to make this not depend on hacks like the one
-        #         below
+        # FIXME: maybe alter hype to make this not depend on hacks like below
         if name != 'FlaskHypeResource':
             # auto-generate singular and plural forms
             if '_type_' not in dikt:
@@ -181,7 +206,6 @@ class FlaskHype(object):
         self.Resource = self.make_resource_base(self.registry)
 
     def make_resource_base(self, hype_registry):
-
         class FlaskHypeResource(Resource):
             __metaclass__ = FlaskHypeResourceMeta
 
@@ -191,3 +215,5 @@ class FlaskHype(object):
 
     def init_app(self, app):
         self.registry.connect(app)
+
+    init_blueprint = init_app
