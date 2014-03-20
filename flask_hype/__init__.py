@@ -95,6 +95,10 @@ class FlaskNamespace(Namespace):
                 parts.append(part)
                 continue
 
+            # skip empty parts
+            if not part:
+                continue
+
             resource_cls = self.matching_resource(part)
             if not resource_cls:
                 raise ValueError(
@@ -112,6 +116,9 @@ class FlaskNamespace(Namespace):
                     resource_cls._name_,
                 )
             parts.append(part)
+
+        # append trailing slash
+        parts.append('/')
         return ''.join(parts)
 
     def connect(self, app_or_bp):
