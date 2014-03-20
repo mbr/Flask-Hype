@@ -26,6 +26,7 @@ def resource_view(targets):
                 request=request,
                 uri=request.path,
                 method=request.method,
+                args=request.args,
                 **kwargs)
 
             # serialize the response using flask-arrest
