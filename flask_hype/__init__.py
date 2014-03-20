@@ -122,6 +122,9 @@ class FlaskNamespace(Namespace):
         parts.append('/')
         return ''.join(parts)
 
+    def _format_target(self, path):
+        return path
+
     def connect(self, app_or_bp):
         """Connects a namespace onto a Flask application or blueprint. This
         will register the necessary URL converters onto the app, as well as
